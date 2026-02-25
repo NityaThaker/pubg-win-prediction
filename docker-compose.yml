@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./models:/app/models:ro
+    environment:
+      - MODEL_PATH=/app/models/pubg_model_v5.pkl
+      - FEATURES_PATH=/app/models/day5_feature_cols.pkl
+    restart: unless-stopped
+
+  streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    ports:
+      - "8501:8501"
+    environment:
+      - FASTAPI_URL=http://api:8000
+    depends_on:
+      - api
+    restart: unless-stopped
