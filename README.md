@@ -1,212 +1,143 @@
-# PUBG Win Placement Prediction
+# PUBG Win Placement Predictor
 
-![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white)
-![LightGBM](https://img.shields.io/badge/LightGBM-4.3-brightgreen)
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-![Streamlit](https://img.shields.io/badge/Streamlit-1.35-red?logo=streamlit&logoColor=white)
+A machine learning system that predicts a player's finish placement in PUBG matches,
+built end-to-end over 13 days — from raw Kaggle data to a live deployed web application.
 
-A machine learning project that predicts how well a PUBG player will finish in a match, built end-to-end by **Nitya Thaker** — from raw data and feature engineering all the way to a deployed web app.
-
----
-
-## Live Demo
-
-[Try the Streamlit App](https://pubg-win-prediction.streamlit.app) — deploys in Week 3
+**Live Demo:** [pubg-win-predictor.streamlit.app](https://pubg-win-prediction.streamlit.app/)
 
 ---
 
 ## Results
 
-| Day | What changed | MAE |
-|-----|-------------|-----|
-| 1 | Baseline model, 5 features | 0.10000 |
-| 2 | Feature engineering, 50+ features | 0.05000 |
-| 3 | Optuna hyperparameter tuning | 0.05297 |
-| 4 | Cheater detection and new features | 0.05296 |
-| 5 | SHAP feature surgery, 105 features | 0.05130 |
+| Day | Change | MAE |
+|-----|--------|-----|
+| Day 1 | Baseline LightGBM, 5 features | 0.10000 |
+| Day 2 | Feature engineering, 105 features | 0.05000 |
+| Day 3 | Optuna hyperparameter tuning | 0.05297 |
+| Day 4 | Cheater detection + new features | 0.05296 |
+| Day 5 | SHAP-guided feature surgery | 0.05130 |
 
-Final MAE of 0.0513 means the model predicts a player's finish percentile within about 5 points, trained on 4.4 million rows.
-
----
-
-## Visualizations
-
-<table>
-<tr>
-<td><img src="assets/day6_mae_progression.png" width="400"/><br><sub>MAE improvement across 5 days</sub></td>
-<td><img src="assets/day6_feature_importance.png" width="400"/><br><sub>Top 20 features by SHAP value</sub></td>
-</tr>
-<tr>
-<td><img src="assets/day6_correlations.png" width="400"/><br><sub>Feature correlation with win placement</sub></td>
-<td><img src="assets/day6_archetype_winrate.png" width="400"/><br><sub>Win rates by player archetype</sub></td>
-</tr>
-</table>
+Final MAE of 0.05130 — the model predicts player placement within 5% on average across
+over a million matches.
 
 ---
 
-## Feature Engineering
+## Project Overview
 
-105 features were built from the original 29 columns, grouped into these categories:
+The goal was to predict `winPlacePerc` — a continuous value between 0 and 1 representing
+where a player finished in a match relative to all other players. A value of 1.0 means
+first place. A value of 0.0 means last.
 
-| Category | Examples |
-|----------|---------|
-| Combat | damagePerKill, headshotRate, longRangeKillRate |
-| Movement | totalDistance, walkRatio, survivalScore |
-| Survival Proxy | survivalRatio, boostIntensity, killPlaceNorm |
-| Resources | totalHealing, crateHunterScore, looting_efficiency |
-| Team Aggregations | grp_kills_sum/mean/max, killShareInTeam |
-| Match Normalization | killPercentileInMatch, damageVsMatchAvg |
-| Log and Clipped | kills_log, damage_clipped, totalDistance_log |
-
-The single strongest predictor turned out to be `walkDistance` — players who keep moving survive longer. Second was `killPlace`, your kill ranking within the match relative to everyone else.
+The dataset contains 4.4 million rows from real PUBG matches, with 29 columns covering
+combat stats, movement, healing, and match metadata. The final model uses 105 engineered
+features and was trained on a 25% sample (~1.1 million rows).
 
 ---
 
-## Player Archetype System
+## What Was Built
 
-Every player gets classified into one of five archetypes based on their stats:
+### Week 1 — Core ML
+Started with a 5-feature baseline and iterated to 105 features through careful engineering.
+Features fall into three categories: individual player stats, group-level aggregates
+(team kills, team damage, best killer in team), and match-level context (kill rank within
+match, damage vs match average). SHAP analysis guided which features to keep and which
+to drop. Cheater detection was added using rule-based flags and isolation forest to remove
+anomalous rows that would otherwise corrupt training.
 
-| Archetype | Win Rate | Style |
-|-----------|----------|-------|
-| Aggressive Rusher | 38.7% | High kills, dies early |
-| Survivalist | 75.0% | Rotates constantly, avoids fights |
-| Sniper | 81.1% | Long-range, high headshot rate |
-| Support | 54.9% | Revives teammates, plays for the team |
-| Balanced | 41.5% | Solid across all stats — 78% of players fall here |
+### Week 2 — Visualization and Documentation
+Built a scouting report system and visualization suite using matplotlib and seaborn.
+Set up the GitHub repository with structured documentation.
 
----
+### Week 3 — Web Application
+Built a FastAPI REST backend with Pydantic validation, then a Streamlit frontend with
+interactive sliders. Containerized both services with Docker so the full stack runs with
+a single `docker compose up`. Deployed the app to Streamlit Cloud with automatic model
+loading from Google Drive using gdown.
 
-## Project Structure
+### Week 4 — Player Lookup and Final Polish
+The manual input form had a known limitation: 45 of the 105 features require data from
+every other player in the match, which you cannot type in manually. These were filled
+with zero, pushing predictions toward 0.4-0.6 regardless of input.
 
-```
-pubg-win-prediction/
-├── notebooks/
-│   ├── day1_baseline.ipynb
-│   ├── day2_feature_engineering.ipynb
-│   ├── day3_model_tuning.ipynb
-│   ├── day4_cheater_detection.ipynb
-│   ├── day5_shap_analysis.ipynb
-│   └── day6_visualizations.ipynb
-├── src/
-│   ├── __init__.py
-│   ├── features.py
-│   ├── predict.py
-│   └── scouting_report.py
-├── models/
-│   └── .gitkeep
-├── assets/
-├── requirements.txt
-├── requirements-dev.txt
-├── .gitignore
-└── README.md
-```
+The fix was a Player Lookup system. Users enter a real groupId from the Kaggle dataset.
+The app retrieves all players from that group, computes all 105 features using full match
+context, and runs the model with complete information. This is the same offline-precompute,
+online-serve pattern used in production ML systems.
 
-The model file `pubg_model_v5.pkl` is too large for GitHub. Download it from [Google Drive](#) and place it in the `models/` folder.
+A playstyle classifier was also added — rule-based classification of each player as
+Aggressive, Passive, Sniper, or Balanced based on kills, damage, walk distance, and
+headshot rate.
 
 ---
 
-## Quickstart
+## The Key Engineering Decision
 
-```bash
-git clone https://github.com/NityaThaker/pubg-win-prediction.git
-cd pubg-win-prediction
-pip install -r requirements.txt
-```
+Feature engineering contributed more to model performance than any hyperparameter tuning.
+Going from 5 to 105 features cut MAE from 0.10 to 0.05. Optuna tuning on top of that
+moved it by less than 0.001. The lesson: better features beat better hyperparameters.
 
-Place `train_V2.csv` in `data/` and `pubg_model_v5.pkl` in `models/`, then:
-
-```python
-from src.predict import load_model, predict_single
-
-model, feature_cols = load_model(
-    "models/pubg_model_v5.pkl",
-    "models/day5_feature_cols.pkl"
-)
-
-stats = {
-    "kills": 5, "damageDealt": 420, "walkDistance": 2200,
-    "boosts": 3, "heals": 4, "weaponsAcquired": 6,
-    "killPlace": 8, "maxPlace": 94, "numGroups": 90,
-    "matchType": "squad", "longestKill": 87,
-    "headshotKills": 2, "assists": 1, "DBNOs": 1,
-    "revives": 0, "rideDistance": 0, "swimDistance": 0,
-    "roadKills": 0, "teamKills": 0, "vehicleDestroys": 0,
-    "matchDuration": 1800, "rankPoints": 1500,
-    "killPoints": 1000, "winPoints": 1500, "killStreaks": 2,
-    "groupId": "g1", "matchId": "m1", "Id": "p1",
-}
-
-print(predict_single(stats, model, feature_cols))
-```
-
----
-
-## Running the Notebooks
-
-The notebooks are meant to be run in order in Google Colab, with the dataset at `/content/drive/MyDrive/PUBG_Project/train_V2.csv`.
-
-```
-Day 1  →  notebooks/day1_baseline.ipynb
-Day 2  →  notebooks/day2_feature_engineering.ipynb
-Day 3  →  notebooks/day3_model_tuning.ipynb
-Day 4  →  notebooks/day4_cheater_detection.ipynb
-Day 5  →  notebooks/day5_shap_analysis.ipynb
-Day 6  →  notebooks/day6_visualizations.ipynb
-```
-
----
-
-## Deployment
-
-```bash
-streamlit run app/streamlit_app.py
-```
-
-To deploy on Streamlit Cloud (free): push the repo to GitHub, connect it at share.streamlit.io, set the main file to `app/streamlit_app.py`, and add your model path as a secret.
+The rank-within-match features were the most predictive — knowing that a player ranked
+in the top 10% for damage in their specific match is far more informative than knowing
+their raw damage number, which varies wildly by match type and lobby size.
 
 ---
 
 ## Tech Stack
 
-| Layer | Tool |
-|-------|------|
-| Language | Python 3.10+ |
-| ML | LightGBM 4.3 |
-| Tuning | Optuna (TPE sampler, 100 trials) |
-| Explainability | SHAP TreeExplainer |
-| Data | pandas, numpy |
-| Visualization | matplotlib, seaborn, plotly |
-| API | FastAPI + uvicorn |
+| Layer | Tools |
+|-------|-------|
+| ML | LightGBM, Scikit-learn, Optuna, SHAP |
+| Data | Pandas, NumPy |
+| Backend | FastAPI, Pydantic, Uvicorn |
 | Frontend | Streamlit |
-| Hosting | Streamlit Cloud |
+| Infrastructure | Docker, Docker Compose |
+| Deployment | Streamlit Cloud, Google Drive |
 
 ---
 
-## Model Details
+## Running Locally
 
-| Setting | Value |
-|---------|-------|
-| Algorithm | LightGBM |
-| Features | 105 |
-| Training rows | ~1.1M (25% sample, cheaters removed) |
-| Cross-validation | 3-fold |
-| learning_rate | 0.0307 |
-| num_leaves | 188 |
-| max_depth | 11 |
-| Final MAE | 0.0513 |
+**Streamlit only:**
+```bash
+pip install -r requirements.txt
+streamlit run streamlit_app.py
+```
 
----
+**Full stack with Docker:**
+```bash
+docker compose up
+```
 
-## License
-
-MIT — see LICENSE for details.
+Frontend runs at `http://localhost:8501`.
+API documentation at `http://localhost:8000/docs`.
 
 ---
 
-## Acknowledgements
-
-Dataset from the [PUBG Finish Placement Prediction](https://www.kaggle.com/c/pubg-finish-placement-prediction) Kaggle competition. Thanks to the LightGBM and SHAP teams for their excellent libraries.
+## Project Structure
+```
+pubg-win-prediction/
+├── streamlit_app.py          # Main app (Streamlit Cloud deployment)
+├── requirements.txt
+├── Dockerfile.api
+├── Dockerfile.streamlit
+├── docker-compose.yml
+├── models/
+│   ├── pubg_model_v5.pkl
+│   └── day5_feature_cols.pkl
+├── day8_fastapi/
+│   └── app/
+│       ├── main.py
+│       ├── schemas.py
+│       └── model_loader.py
+└── day9_streamlit/
+    └── streamlit_app.py
+```
 
 ---
 
-Built by Nitya Thaker — a data scientist who consistently dies in the first zone.
+## Author
+
+Nitya Thaker
+
+This was a structured 13-day project with one clear goal per day — no shortcuts,
+no pre-built templates. Every component was written, debugged, and deployed from scratch.
