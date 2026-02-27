@@ -121,13 +121,13 @@ def classify_playstyle(row):
 
 def placement_label(p):
     if p >= 0.8:
-        return "🏆 Top 20% — Excellent!", "success"
+        return "Top 20% — Excellent!", "success"
     elif p >= 0.6:
-        return "👍 Top 40% — Good performance.", "info"
+        return "Top 40% — Good performance.", "info"
     elif p >= 0.4:
-        return "⚠️ Middle of the pack.", "warning"
+        return "Middle of the pack.", "warning"
     else:
-        return "💀 Bottom 40% — Tough match.", "error"
+        return "Bottom 40% — Tough match.", "error"
 
 
 def build_manual_features(user_input, feature_cols):
@@ -163,7 +163,6 @@ def get_playstyle_evolution(group_id, df):
     rows['playstyle']    = rows.apply(classify_playstyle, axis=1)
     rows['match_number'] = range(1, len(rows) + 1)
 
-    # Fix: best/worst by winPlacePerc across unique matches
     unique_matches = rows.drop_duplicates(subset='matchId')
     best  = unique_matches.loc[unique_matches['winPlacePerc'].idxmax()]
     worst = unique_matches.loc[unique_matches['winPlacePerc'].idxmin()]
@@ -200,7 +199,6 @@ def plot_evolution(group_id, evo_df, evo_summary):
     colors = [STYLE_COLORS.get(s, 'gray') for s in evo_df['playstyle']]
     x = evo_df['match_number']
 
-    # Plot 1 — Placement
     ax = axes[0, 0]
     ax.scatter(x, evo_df['winPlacePerc'], c=colors, s=100, zorder=5)
     ax.plot(x, evo_df['winPlacePerc'], color='#555', linewidth=1)
@@ -208,19 +206,16 @@ def plot_evolution(group_id, evo_df, evo_summary):
     ax.set_xlabel('Player #'); ax.set_ylabel('winPlacePerc')
     ax.set_ylim(0, 1)
 
-    # Plot 2 — Kills
     ax = axes[0, 1]
     ax.bar(x, evo_df['kills'], color=colors)
     ax.set_title('Kills Per Player')
     ax.set_xlabel('Player #'); ax.set_ylabel('Kills')
 
-    # Plot 3 — Damage
     ax = axes[1, 0]
     ax.bar(x, evo_df['damageDealt'], color=colors, alpha=0.85)
     ax.set_title('Damage Per Player')
     ax.set_xlabel('Player #'); ax.set_ylabel('Damage')
 
-    # Plot 4 — Pie
     ax = axes[1, 1]
     counts = evo_summary['playstyle_counts']
     ax.pie(counts.values(),
@@ -241,20 +236,19 @@ def plot_evolution(group_id, evo_df, evo_summary):
 
 
 # ── App Header ────────────────────────────────────────────────────────────────
-st.markdown("# 🎮 PUBG Win Placement Predictor")
+st.markdown("# PUBG Win Placement Predictor")
 st.markdown("*Predict match placement using a LightGBM model trained on 1M+ PUBG matches.*")
 st.markdown("---")
 
 # ── Load resources ────────────────────────────────────────────────────────────
 try:
     model, feature_cols = load_model_and_features()
-    feature_cols = [c for c in model.feature_name_]
 except Exception as e:
     st.error(f"Failed to load model: {e}")
     st.stop()
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
-tab1, tab2 = st.tabs(["🎯 Manual Input", "🔍 Player Lookup"])
+tab1, tab2 = st.tabs(["Manual Input", "Player Lookup"])
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -263,7 +257,7 @@ tab1, tab2 = st.tabs(["🎯 Manual Input", "🔍 Player Lookup"])
 with tab1:
     st.markdown("### Enter Your Match Stats")
     st.markdown(
-        '<div class="info-box">ℹ️ Manual input fills aggregate match features with 0, '
+        '<div class="info-box">Manual input fills aggregate match features with 0, '
         'so predictions lean toward 0.4–0.6. For fully accurate predictions use the '
         '<b>Player Lookup</b> tab.</div>',
         unsafe_allow_html=True
@@ -272,7 +266,7 @@ with tab1:
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.markdown("#### ⚔️ Combat")
+        st.markdown("#### Combat")
         kills         = st.slider("Kills",            0, 30, 2)
         damage        = st.slider("Damage Dealt",     0, 3000, 200)
         assists       = st.slider("Assists",          0, 15, 0)
@@ -283,18 +277,18 @@ with tab1:
         killPlace     = st.slider("Kill Place",       1, 100, 50)
 
     with col2:
-        st.markdown("#### 🏃 Movement")
+        st.markdown("#### Movement")
         walkDistance = st.slider("Walk Distance (m)", 0, 10000, 1500)
         rideDistance = st.slider("Ride Distance (m)", 0, 20000, 0)
         swimDistance = st.slider("Swim Distance (m)", 0, 2000, 0)
 
-        st.markdown("#### 💊 Survival")
+        st.markdown("#### Survival")
         boosts  = st.slider("Boosts",  0, 20, 2)
         heals   = st.slider("Heals",   0, 20, 1)
         revives = st.slider("Revives", 0, 10, 0)
 
     with col3:
-        st.markdown("#### 🗺️ Match Info")
+        st.markdown("#### Match Info")
         weaponsAcquired = st.slider("Weapons Acquired",   0, 20, 3)
         matchDuration   = st.slider("Match Duration (s)", 600, 2400, 1800)
         maxPlace        = st.slider("Max Place",          1, 100, 90)
@@ -305,7 +299,7 @@ with tab1:
 
     st.markdown("---")
 
-    if st.button("🎯 Predict My Placement", use_container_width=True):
+    if st.button("Predict My Placement", use_container_width=True):
         try:
             user_input = dict(
                 kills=kills, damageDealt=damage, assists=assists,
@@ -323,7 +317,6 @@ with tab1:
             pred = float(np.clip(model.predict(X)[0], 0, 1))
             label, level = placement_label(pred)
 
-            # Playstyle from manual input
             fake_row = {
                 'kills': kills, 'damageDealt': damage,
                 'walkDistance': walkDistance,
@@ -332,9 +325,9 @@ with tab1:
             style = classify_playstyle(fake_row)
 
             c1, c2, c3 = st.columns(3)
-            c1.metric("📍 Predicted Placement", f"{pred:.3f}")
-            c2.metric("🏅 Top %", f"{(1 - pred) * 100:.1f}%")
-            c3.metric(f"{STYLE_EMOJI[style]} Playstyle", style)
+            c1.metric("Predicted Placement", f"{pred:.3f}")
+            c2.metric("Top %", f"{(1 - pred) * 100:.1f}%")
+            c3.metric("Playstyle", style)
 
             if level == "success":
                 st.success(label)
@@ -353,7 +346,7 @@ with tab1:
 # TAB 2 — Player Lookup
 # ════════════════════════════════════════════════════════════════════════════
 with tab2:
-    st.markdown("### 🔍 Look Up a Real Player Group")
+    st.markdown("### Look Up a Real Player Group")
     st.markdown(
         '<div class="info-box">Enter a <b>groupId</b> from the PUBG Kaggle dataset. '
         'The model will use full match context for accurate predictions across all 105 features.</div>',
@@ -366,9 +359,8 @@ with tab2:
         st.error(f"Failed to load lookup dataset: {e}")
         st.stop()
 
-    # Sample groupIds expander
-    with st.expander("📋 Don't have a groupId? Click here for samples"):
-        st.markdown("**Guaranteed interesting playstyles to try:**")
+    with st.expander("Don't have a groupId? Click here for samples"):
+        st.markdown("**Guaranteed examples for each playstyle:**")
 
         style_samples = {}
         for style in ['Aggressive', 'Sniper', 'Passive', 'Balanced']:
@@ -378,7 +370,7 @@ with tab2:
                 style_samples[style] = match['groupId'].iloc[0]
 
         for style, gid in style_samples.items():
-            st.code(f"{STYLE_EMOJI[style]} {style}: {gid}")
+            st.code(f"{style}: {gid}")
 
         st.markdown("---")
         st.markdown("**Or pick any groupId from the dataset:**")
@@ -393,7 +385,7 @@ with tab2:
 
     col_btn1, col_btn2 = st.columns([1, 5])
     with col_btn1:
-        lookup_clicked = st.button("🔍 Look Up", use_container_width=True)
+        lookup_clicked = st.button("Look Up", use_container_width=True)
 
     if lookup_clicked:
         if not group_id_input.strip():
@@ -408,19 +400,19 @@ with tab2:
                     "Try one of the sample IDs from the expander above."
                 )
             else:
-                st.success(f"✅ Found {len(rows)} player(s) for this group.")
+                st.success(f"Found {len(rows)} player(s) for this group.")
 
                 # ── Predictions ───────────────────────────────────────────
                 st.markdown("---")
-                st.markdown("### 📊 Predictions vs Actual Placement")
+                st.markdown("### Predictions vs Actual Placement")
 
                 try:
                     valid_features = [c for c in feature_cols if c in rows.columns]
-                    X    = rows[valid_features].fillna(0).values
+                    X     = rows[valid_features].fillna(0).values
                     preds = np.clip(model.predict(X), 0, 1)
                     rows  = rows.reset_index(drop=True)
                     rows['predicted_winPlacePerc'] = preds
-                    rows['error'] = abs(rows['winPlacePerc'] - rows['predicted_winPlacePerc'])
+                    rows['error']     = abs(rows['winPlacePerc'] - rows['predicted_winPlacePerc'])
                     rows['playstyle'] = rows.apply(classify_playstyle, axis=1)
 
                     display_cols = ['kills', 'damageDealt', 'walkDistance',
@@ -461,9 +453,9 @@ with tab2:
                 except Exception as e:
                     st.error(f"Prediction error: {e}")
 
-                # ── Playstyle Evolution ───────────────────────────────────
+                # ── Playstyle Breakdown ───────────────────────────────────
                 st.markdown("---")
-                st.markdown("### 🎭 Group Playstyle Breakdown")
+                st.markdown("### Group Playstyle Breakdown")
 
                 try:
                     evo_df, evo_summary = get_playstyle_evolution(gid, df_lookup)
@@ -474,14 +466,13 @@ with tab2:
                         m1.metric("Players in Group",   evo_summary['num_players'])
                         m2.metric("Avg Placement",      f"{evo_summary['avg_placement']:.3f}")
                         m3.metric("Avg Kills",          f"{evo_summary['avg_kills']:.1f}")
-                        m4.metric("Dominant Playstyle", f"{STYLE_EMOJI[dominant]} {dominant}")
+                        m4.metric("Dominant Playstyle", dominant)
 
-                        # Best / Worst — only show if multiple unique matches
                         if evo_summary['num_matches'] > 1:
                             c1, c2 = st.columns(2)
                             with c1:
                                 bm = evo_summary['best_match']
-                                st.markdown("**🏆 Best Match:**")
+                                st.markdown("**Best Match:**")
                                 st.write(f"Match `{bm['matchId']}` — "
                                          f"Kills: {bm['kills']}, "
                                          f"Damage: {bm['damageDealt']:.0f}, "
@@ -489,17 +480,16 @@ with tab2:
                                          f"Style: {bm['playstyle']}")
                             with c2:
                                 wm = evo_summary['worst_match']
-                                st.markdown("**💀 Worst Match:**")
+                                st.markdown("**Worst Match:**")
                                 st.write(f"Match `{wm['matchId']}` — "
                                          f"Kills: {wm['kills']}, "
                                          f"Damage: {wm['damageDealt']:.0f}, "
                                          f"Placement: {wm['winPlacePerc']:.3f}, "
                                          f"Style: {wm['playstyle']}")
                         else:
-                            st.info("ℹ️ This group appears in 1 match in the dataset sample. "
+                            st.info("This group appears in 1 match in the dataset sample. "
                                     "Best/Worst match comparison requires 2+ matches.")
 
-                        # Chart
                         fig = plot_evolution(gid, evo_df, evo_summary)
                         st.pyplot(fig)
                         plt.close()
@@ -513,8 +503,8 @@ with tab2:
 st.markdown("---")
 st.markdown(
     "<div style='text-align:center; color:#666; font-size:13px;'>"
-    "Built by <b>Nitya Thaker</b> · "
-    "LightGBM · Trained on 1M+ PUBG matches · "
+    "Built by <b>Nitya Thaker</b> &nbsp;·&nbsp; "
+    "LightGBM &nbsp;·&nbsp; Trained on 1M+ PUBG matches &nbsp;·&nbsp; "
     "<a href='https://github.com/NityaThaker/pubg-win-prediction' "
     "style='color:#3498db;'>GitHub</a>"
     "</div>",
