@@ -60,7 +60,7 @@ st.markdown("""
 
 MODEL_FILE_ID   = "1rPxQVZ1u1gAEdftkAeAANXoGKFrAMxQM"
 FEATURE_FILE_ID = "1j01b9zB43HqkvUqhvKlPxCzxHLcaz7Bo"
-LOOKUP_FILE_ID  = "1btXkjuc3Q_5mqnhYn3_-E_ilSgKa7Abj"
+LOOKUP_FILE_ID  = "1Z5nVJQPx3dblg7d8m2UzPNmP4KIHOpTd"
 
 # ── Loaders ───────────────────────────────────────────────────────────────────
 @st.cache_resource(show_spinner="Loading model...")
